@@ -11,6 +11,7 @@ import os
 import webapp2
 from google.appengine.ext.webapp import template
 from geo import geotypes
+import logging
 
 # ------  GAE Datastore -----
 from google.appengine.ext import db
@@ -41,10 +42,10 @@ class IndexHandler(BaseHandler):
 class PotholeReportAPI(AppHandler):
     def get(self):
         callback = self.request.get('callback')     #jsonp call back
-        lat = float(self.request.get('lat'))
-        lon = float(self.request.get('lon'))
-
-        if not lat or not lon:
+        try:
+            lat = float(self.request.get('lat'))
+            lon = float(self.request.get('lon'))
+        except ValueError:
             json_result = dict(
                 status = 'error',
                 message = 'No lat or lon!'
@@ -67,7 +68,7 @@ class PotholeReportAPI(AppHandler):
         # Add potholelog
         new_pothole_log = PotholeReportLog()
         if user == "":
-        	user = ip
+            user = ip
         new_pothole_log.user = user
         new_pothole_log.message = "Web User "+user+" add a pothole @lat:"+str(lat)+" lon:"+str(lon)
         new_pothole_log.put()
@@ -77,6 +78,21 @@ class PotholeReportAPI(AppHandler):
             message = 'Add pothole success!'
         )
         self.response.out.write(self.json_output(json_result, callback))
+
+    def post(self):
+        callback = self.request.get('callback')     #jsonp call back
+        if callback == "fail":
+	        logging.debug("The failure is too stronk.")
+        	return
+
+        report_type = str(self.request.get("type"))
+        logging.debug("I get someone posting something from "+report_type+"!")
+        json_result = dict(
+            status = 'success',
+            message = 'I get something'
+        )
+        self.response.out.write(self.json_output(json_result, callback))
+
 
 
 class PotholeShowLogAPI(AppHandler):
@@ -135,7 +151,7 @@ class PotholeShowAPI(AppHandler):
             },
             {'case_status': str(result.case_status),
              'id': str(result.key().id()),
-             'report_type': str(result.type)
+             'report_type': str(result.report_type)
             })
             #{dict([(attr, getattr(result, attr))
             #                  for attr in public_attrs])})
