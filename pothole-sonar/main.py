@@ -166,6 +166,7 @@ class PotholeShowAPI(AppHandler):
         if json_type == "geojson":
             for pothole in potholeResults:
                 pothole_json = dict(
+                	time = str(pothole.time),
                     type = "Feature",
                     geometry =  dict(
                         type = "Point",
@@ -173,12 +174,14 @@ class PotholeShowAPI(AppHandler):
                     ),
                     properties = dict(
                         title = "Pothole",
-                        #iconUrl = "/assets/img/pothole-sign.png",
-                        iconUrl = baseurl + "/assets/img/pothole-sign.png",
-                        iconSize = [50, 50],
-                		iconAnchor =  [25, 25],
-                		popupAnchor = [0, -25],
-                		className = "dot"
+                        icon = dict(
+	                        #iconUrl = "/assets/img/pothole-sign.png",
+	                        iconUrl = baseurl + "/assets/img/pothole-sign.png",
+	                        iconSize = [50, 50],
+	                		iconAnchor =  [25, 25],
+	                		popupAnchor = [0, -25],
+	                		className = "dot"
+                		)
                     )
                 )
                 output.append(pothole_json)

@@ -152,7 +152,7 @@ body {
     }
     ];
 
-    myLayer.setGeoJSON(geoJson);
+    //myLayer.setGeoJSON(geoJson);
 
     // pothole object
     var pothole = {
@@ -174,9 +174,10 @@ body {
     function start() {
         console.log("--start--");
         
-        return;
+        //return;
         pothole.interval = setInterval(function(){
-            parseAndUpdateReportLog(pothole.lastupdate);    
+            parseAndUpdateReportLog(pothole.lastupdate);
+            updateMarkerToMap(pothole.updateMarkerTime);
         }, pothole.intervaltime);
     }
     function stop() {
@@ -186,7 +187,7 @@ body {
 
     // Update Marker to map
     function updateMarkerToMap(time) {
-        console.log("--updateMarkerToMap--");
+        console.log("--updateMarkerToMap-- "+ time);
         var url = "/api/show";
         //url = {{baseUrl}} + "/api/syncdisplay?callback=?";
         if (pothole.updateMarkerLock)
@@ -201,15 +202,32 @@ body {
             ).done(function(data) {
                 pothole.updateMarkerLock = false;
                 console.log(data);
-                //pothole.updateMarkerTime = data[data.length-1].time;
-                myLayer.setGeoJSON(data);                
+                //myLayer.setGeoJSON(data);
+                if (data.length ==0)
+                	return;
+
+                lastupdatetime = (data[data.length-1].time > data[0].time) ? data[data.length-1].time : data[0].time;
+                pothole.updateMarkerTime = lastupdatetime;
+                addMarkerToNewFeatureLayer(data);         
             }
         )
     }
 
+    // Safe? add unlimited layer to map
+    function addMarkerToNewFeatureLayer(data) {
+    	console.log("--addMarkerToNewFeatureLayer--");
+    	var myLayer = L.mapbox.featureLayer().addTo(map);
+    	myLayer.on('layeradd', function(e) {
+	        var marker = e.layer,
+	            feature = marker.feature;
+	        marker.setIcon(L.icon(feature.properties.icon));
+        });
+        myLayer.setGeoJSON(data);	
+    }
+
     // Update report log to div
     function parseAndUpdateReportLog (time){
-        console.log("--parseAndUpdateReportLog--");
+        //console.log("--parseAndUpdateReportLog--");
         var url = "/api/showlog";
         //url = {{baseUrl}} + "/api/syncdisplay?callback=?";
         if (pothole.reportLogLock)
