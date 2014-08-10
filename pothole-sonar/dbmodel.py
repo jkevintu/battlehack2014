@@ -6,6 +6,7 @@ from geo.geomodel import GeoModel
 class Pothole(GeoModel):
   case_status = db.StringProperty()
   report_type = db.StringProperty()
+  time = db.IntegerProperty()
 
   @staticmethod
   def public_attributes():
@@ -33,7 +34,8 @@ class Pothole(GeoModel):
 class PotholeReportLog(db.Model):
   user = db.StringProperty()
   message = db.StringProperty()
-  time = db.DateTimeProperty(auto_now_add=True)
+  time = db.IntegerProperty()
+
 
 
 

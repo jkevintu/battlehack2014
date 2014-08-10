@@ -16,6 +16,14 @@ indexes:
   - name: case_status
     direction: desc
 
+- kind: Pothole
+  properties:
+  - name: time
+    direction: desc
+  - name: case_status
+  - name: location
+  - name: report_type
+
 - kind: PotholeReportLog
   properties:
   - name: time

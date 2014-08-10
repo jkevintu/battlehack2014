@@ -13,21 +13,32 @@ body {
     color: #FFF;
 }
 #map {
-	height: 500px;
-	width: 100%;
-	margin: 0 5px 5px 0;
+    height: 500px;
+    width: 100%;
+    margin: 0 5px 5px 0;
 }
 .reportlog {
-	border: 1px #CCC solid;
-	font-size: 10px;
-	margin: 0 10px 0 0;
-	height: 500px;
+    border: 1px #CCC solid;
+    font-size: 10px;
+    margin: 0 10px 0 0;
+    height: 500px;
+    padding: 5px;
+    overflow: hidden;
+}
+.color-set-0 {
+    color: #111;
+}
+.color-set-1 {
+    color: blue;
+}
+.bold {
+    font-weight: bold;
 }
 </style>
-	<title>Battle Hack 2014 : Pothole Sonar</title>
-	<!-- Map box -->
+    <title>Battle Hack 2014 : Pothole Sonar</title>
+    <!-- Map box -->
     <script src='https://api.tiles.mapbox.com/mapbox.js/v2.0.0/mapbox.js'></script>
-	<link href='https://api.tiles.mapbox.com/mapbox.js/v2.0.0/mapbox.css' rel='stylesheet' />
+    <link href='https://api.tiles.mapbox.com/mapbox.js/v2.0.0/mapbox.css' rel='stylesheet' />
     <!-- -->
 </head>
 <body>
@@ -47,18 +58,18 @@ body {
                     <div id='map'></div>
                 </div>
                 <div class="col-xs-12 col-sm-3">
-                	<div class="reportlog">
-                		Web User ::1 add a pothole @lat:42.241185 lon:-71.17035
-                	</div>
+                    <div class="reportlog">
+                        Web User ::1 add a pothole @lat:42.241185 lon:-71.17035
+                    </div>
                 </div>
             </div>
             <div class="row">
-            	<div class="col-xs-12 col-sm-12">
-        			<div class="alert alert-info text-center" role="alert">
-            			Send email subject hack to <b>ktu219@gmail.com</b> 
-            			or text to <b>666-666-6666</b> to add a new pothole!
-            		</div>
-            	</div>
+                <div class="col-xs-12 col-sm-12">
+                    <div class="alert alert-info text-center" role="alert">
+                        Send email subject Hack to <b>ktu219@gmail.com</b> 
+                        or text 'Hack' to <b>666-666-6666</b> to add a new pothole!
+                    </div>
+                </div>
             </div>
     </div>
 </div>
@@ -75,73 +86,161 @@ body {
 <script src="assets/js/bootstrap.js"></script>
 <script>
     // Provide your access token
-	L.mapbox.accessToken = 'pk.eyJ1Ijoia3R1MjE5IiwiYSI6IjkwX0N0aTgifQ.Os2lgM6CNYzUaECUYT0kWA';
-	// Create a map in the div #map
-	var map = L.mapbox.map('map', 'ktu219.h9km2la1');
-	var myLayer = L.mapbox.featureLayer().addTo(map);
-	myLayer.on('layeradd', function(e) {
-	    var marker = e.layer,
-	        feature = marker.feature;
+    L.mapbox.accessToken = 'pk.eyJ1Ijoia3R1MjE5IiwiYSI6IjkwX0N0aTgifQ.Os2lgM6CNYzUaECUYT0kWA';
+    // Create a map in the div #map
+    var map = L.mapbox.map('map', 'ktu219.h9km2la1');
+    var myLayer = L.mapbox.featureLayer().addTo(map);
+    myLayer.on('layeradd', function(e) {
+        var marker = e.layer,
+            feature = marker.feature;
 
-	    /*
-	    if (feature.properties.icon.report_type == "web_report") {
-	    	feature.properties.icon.iconUrl = "/assets/img/pothole-icon.png";
-	    	console.log("yes");
-	    }
-	    */
-	    console.log(feature.properties);
-	    marker.setIcon(L.icon(feature.properties.icon));
-	});
+        /*
+        if (feature.properties.icon.report_type == "web_report") {
+            feature.properties.icon.iconUrl = "/assets/img/pothole-icon.png";
+            console.log("yes");
+        }
+        */
+        console.log(feature.properties);
+        marker.setIcon(L.icon(feature.properties.icon));
+    });
 
     //Center 42.3514/-71.0554
     /*
     L.marker([42.3514, -71.0554], {
-	    icon: L.mapbox.marker.icon({
-	        'marker-size': 'large',
-	        //'marker-symbol': 'bus',
-	        'marker-color': '#fa0'
-	    })
-	}).addTo(map);
-	*/
-	var geoJson = [
-	{
-	    "type": "Feature",
-	    "geometry": {
-	        "type": "Point",
-	        "coordinates": [-71.0554, 42.35135]
-	    },
-	    "properties": {
-	        "title": "Pothole",
-	        "icon": {
-	        	"report_type": "web_report",
-	            "iconUrl": "/assets/img/pothole-sign.png",
-	            "iconSize": [50, 50], // size of the icon
-	            "iconAnchor": [25, 25], // point of the icon which will correspond to marker's location
-	            "popupAnchor": [0, -25], // point from which the popup should open relative to the iconAnchor
-	            "className": "dot"
-	        }
-	    }
-	}, {
-	    "type": "Feature",
-	    "geometry": {
-	        "type": "Point",
-	        "coordinates": [-71.05545, 42.3507]
-	    },
-	    "properties": {
-	        "title": "Pothole",
-	        "icon": {
-	        	"report_type": "aaa",
-	            "iconUrl": "/assets/img/pothole-sign.png",
-	            "iconSize": [50, 50],
-	            "iconAnchor": [25, 25],
-	            "popupAnchor": [0, -25],
-	            "className": "dot"
-	        }
-	    }
-	}
-	];
+        icon: L.mapbox.marker.icon({
+            'marker-size': 'large',
+            //'marker-symbol': 'bus',
+            'marker-color': '#fa0'
+        })
+    }).addTo(map);
+    */
+    var geoJson = [
+    {
+        "type": "Feature",
+        "geometry": {
+            "type": "Point",
+            "coordinates": [-71.0554, 42.35135]
+        },
+        "properties": {
+            "title": "Pothole",
+            "icon": {
+                "report_type": "web_report",
+                "iconUrl": "/assets/img/pothole-sign.png",
+                "iconSize": [50, 50], // size of the icon
+                "iconAnchor": [25, 25], // point of the icon which will correspond to marker's location
+                "popupAnchor": [0, -25], // point from which the popup should open relative to the iconAnchor
+                "className": "dot"
+            }
+        }
+    }, {
+        "type": "Feature",
+        "geometry": {
+            "type": "Point",
+            "coordinates": [-71.05545, 42.3507]
+        },
+        "properties": {
+            "title": "Pothole",
+            "icon": {
+                "report_type": "aaa",
+                "iconUrl": "/assets/img/pothole-sign.png",
+                "iconSize": [50, 50],
+                "iconAnchor": [25, 25],
+                "popupAnchor": [0, -25],
+                "className": "dot"
+            }
+        }
+    }
+    ];
 
-	myLayer.setGeoJSON(geoJson);
+    myLayer.setGeoJSON(geoJson);
+
+    // pothole object
+    var pothole = {
+        intervaltime : 1000,
+        lastupdate : 0,
+        colorset : 0,
+        interval : null,
+        reportLogLock : false,
+        updateMarkerLock : false,
+        updateMarkerTime : 0
+    };
+
+    // Document ready
+    $(function(){
+        start();
+        
+    });
+
+    function start() {
+        console.log("--start--");
+        
+        return;
+        pothole.interval = setInterval(function(){
+            parseAndUpdateReportLog(pothole.lastupdate);    
+        }, pothole.intervaltime);
+    }
+    function stop() {
+        console.log("--stop--");
+        clearInterval(pothole.interval);
+    }
+
+    // Update Marker to map
+    function updateMarkerToMap(time) {
+        console.log("--updateMarkerToMap--");
+        var url = "/api/show";
+        //url = {{baseUrl}} + "/api/syncdisplay?callback=?";
+        if (pothole.updateMarkerLock)
+            return;
+        pothole.updateMarkerLock = true;
+
+        $.getJSON(
+            url, { 
+                time: time,
+                jsontype: "geojson" 
+            }
+            ).done(function(data) {
+                pothole.updateMarkerLock = false;
+                console.log(data);
+                //pothole.updateMarkerTime = data[data.length-1].time;
+                myLayer.setGeoJSON(data);                
+            }
+        )
+    }
+
+    // Update report log to div
+    function parseAndUpdateReportLog (time){
+        console.log("--parseAndUpdateReportLog--");
+        var url = "/api/showlog";
+        //url = {{baseUrl}} + "/api/syncdisplay?callback=?";
+        if (pothole.reportLogLock)
+            return;
+        pothole.reportLogLock = true;
+        $.getJSON(
+            url, { time: time }
+            ).done(function(data) {
+                pothole.reportLogLock = false;
+                //console.log(data);
+                while (data.length > 0){
+                    //console.log(data[data.length-1]);                    
+                    var dom = $("<div class='color-set-"+pothole.colorset+"'>").text(data[data.length-1].message);
+                    $(".reportlog").prepend(dom);
+                    // Update lastupdate
+                    pothole.lastupdate = data[data.length-1].time;
+                    updateColorSet();
+                    // Remove data
+                    data.pop();
+                }
+            }
+        )
+    }
+
+    function updateColorSet() {
+        if (pothole.colorset == 0)
+            pothole.colorset = 1;
+        else 
+            pothole.colorset = 0;
+    }
+
 </script>
 
 
