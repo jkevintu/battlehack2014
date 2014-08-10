@@ -21,6 +21,9 @@ from google.appengine.ext import db
 from dbmodel import Pothole
 from dbmodel import PotholeReportLog
 
+import sendgrid
+
+
 def _merge_dicts(*args):
   """Merges dictionaries right to left. Has side effects for each argument."""
   return reduce(lambda d, s: d.update(s) or d, args)
@@ -50,12 +53,8 @@ class IndexHandler(BaseHandler):
 
 # =report
 class PotholeReportAPI(AppHandler):
-    # Center 42.3514/-71.0554
-    pothole_contextio = { "lat": 42.3516, "lon": -71.0556 }
-
     def get(self):
         callback = self.request.get('callback')     #jsonp call back
-        nowtime = int(time.time())
 
         try:
             lat = float(self.request.get('lat'))
@@ -70,29 +69,14 @@ class PotholeReportAPI(AppHandler):
         ip = str(self.request.remote_addr)
         user = self.request.get('user')
 
-        # Add pothole
-        new_pothole = Pothole()
-        new_pothole._set_location(lat, lon)
-        #new_pothole._set_latitude(lat)
-        #new_pothole._set_longitude(lon)
-        new_pothole.update_location()
-        new_pothole.case_status = "Open"
-        new_pothole.report_type = "web_app"
-        new_pothole.time = nowtime
-        new_pothole.put()
-
-        # Add potholelog
-        new_pothole_log = PotholeReportLog()
         if user == "":
             user = ip
-        new_pothole_log.user = user
-        new_pothole_log.message = "Web User "+user+" add a pothole @lat:"+str(lat)+" lon:"+str(lon)
-        new_pothole_log.time = nowtime
-        new_pothole_log.put()
+        report_type = "web_app";        
+        self.addpothole(lat, lon, user, report_type)       
 
         json_result = dict(
             status = 'success',
-            message = 'Add pothole success!'
+            message = 'Add pothole success to '+str(lat)+"/"+str(lon)+'!'
         )
         self.response.out.write(self.json_output(json_result, callback))
 
@@ -103,14 +87,51 @@ class PotholeReportAPI(AppHandler):
             return
 
         # TODO: Json decode body for user
-
         report_type = str(self.request.get("type"))
         logging.debug("I get someone posting something from "+report_type+"!")
+
+        # Center 42.3514/-71.0554
+        pothole_contextio = dict( lat = 42.3518, lon = -71.0558 )
+        pothole_twilio = dict( lat =  42.3510, lon =  -71.0550 )
+        
+        if report_type == "contextio":
+            user = "Context.io"
+            lat = pothole_contextio["lat"]
+            lon = pothole_contextio["lon"]
+        elif report_type == "twilio":
+	        user = "twilio"
+	        lat = pothole_twilio["lat"]
+	        lon = pothole_twilio["lon"]
+        self.addpothole( lat, lon, user, report_type)
+
         json_result = dict(
             status = 'success',
             message = 'I get something'
         )
         self.response.out.write(self.json_output(json_result, callback))
+
+    def addpothole(self, lat, lon, user, report_type):
+
+        nowtime = int(time.time())
+
+        # Add pothole
+        new_pothole = Pothole()
+        new_pothole._set_location(lat, lon)
+        #new_pothole._set_latitude(lat)
+        #new_pothole._set_longitude(lon)
+        new_pothole.update_location()
+        new_pothole.case_status = "Open"
+        new_pothole.report_type = report_type
+        new_pothole.time = nowtime
+        new_pothole.put()
+
+        # Add potholelog
+        new_pothole_log = PotholeReportLog()
+        new_pothole_log.user = user
+        new_pothole_log.message = "User "+user+" add a pothole @lat:"+str(lat)+" lon:"+str(lon)
+        new_pothole_log.time = nowtime
+        new_pothole_log.put()
+
 
 
 # =showlog
@@ -163,10 +184,37 @@ class PotholeShowAPI(AppHandler):
                 )
         potholeResults = potholeDB.fetch(100)
         output = []
+        icon_preset = dict(
+                iconUrl = baseurl + "/assets/img/pothole-sign.png",
+                iconSize = [30, 30],
+                iconAnchor =  [15, 15],
+                popupAnchor = [0, -15],
+                className = "dot"
+            )
+        icon_twilio = dict (
+                iconUrl = baseurl + "/assets/img/pothole-twilio.png",
+                iconSize = [30, 30],
+                iconAnchor =  [15, 15],
+                popupAnchor = [0, -15],
+                className = "dot"
+        	)
+        icon_contextio = dict (
+                iconUrl = baseurl + "/assets/img/pothole-contextio.png",
+                iconSize = [30, 30],
+                iconAnchor =  [15, 15],
+                popupAnchor = [0, -15],
+                className = "dot"
+        	)
         if json_type == "geojson":
             for pothole in potholeResults:
+            	if pothole.report_type == "twilio":
+            		icon_set = icon_twilio
+            	elif pothole.report_type == "contextio":
+            		icon_set = icon_contextio
+            	else:
+            		icon_set = icon_preset
                 pothole_json = dict(
-                	time = str(pothole.time),
+                    time = str(pothole.time),
                     type = "Feature",
                     geometry =  dict(
                         type = "Point",
@@ -174,14 +222,7 @@ class PotholeShowAPI(AppHandler):
                     ),
                     properties = dict(
                         title = "Pothole",
-                        icon = dict(
-	                        #iconUrl = "/assets/img/pothole-sign.png",
-	                        iconUrl = baseurl + "/assets/img/pothole-sign.png",
-	                        iconSize = [50, 50],
-	                		iconAnchor =  [25, 25],
-	                		popupAnchor = [0, -25],
-	                		className = "dot"
-                		)
+                        icon = icon_set
                     )
                 )
                 output.append(pothole_json)
@@ -247,10 +288,18 @@ class PotholeShowAPI(AppHandler):
         )
         self.response.out.write(self.json_output(json_result, callback))
 
+class SendGridAPI(AppHandler):
+	def get(self):
+		sg = sendgrid.SendGridClient('ktu219', 'a0920788681')
+		message = sendgrid.Mail(to='ktu219@gmail.com', subject='Example', html='Body', text='Body', from_email='doe@email.com')
+		status, msg = sg.send(message)
+		self.response.out.write("success")
+
 
 app = webapp2.WSGIApplication([
     ('/', IndexHandler),
     ('/api/show', PotholeShowAPI),
     ('/api/showlog', PotholeShowLogAPI),
     ('/api/report', PotholeReportAPI),
+    ('/api/sendgrid', SendGridAPI),
 ], debug=True)

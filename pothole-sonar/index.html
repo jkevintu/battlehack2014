@@ -13,14 +13,13 @@ body {
     color: #FFF;
 }
 #map {
-    height: 500px;
-    width: 100%;
-    margin: 0 5px 5px 0;
+    position:absolute; top:0; bottom:0; width:100%;
 }
 .reportlog {
+    background-color: #FFF;
     border: 1px #CCC solid;
     font-size: 10px;
-    margin: 0 10px 0 0;
+    margin: 0 10px 10px 0;
     height: 500px;
     padding: 5px;
     overflow: hidden;
@@ -42,6 +41,7 @@ body {
     <!-- -->
 </head>
 <body>
+<div id='map'></div>
 <div class="main container">
     <div class="header">
         <div class="row">
@@ -55,7 +55,6 @@ body {
     <div class="content">
             <div class="row">
                 <div class="col-xs-12 col-sm-9">
-                    <div id='map'></div>
                 </div>
                 <div class="col-xs-12 col-sm-3">
                     <div class="reportlog">
@@ -66,8 +65,8 @@ body {
             <div class="row">
                 <div class="col-xs-12 col-sm-12">
                     <div class="alert alert-info text-center" role="alert">
-                        Send email subject Hack to <b>ktu219@gmail.com</b> 
-                        or text 'Hack' to <b>666-666-6666</b> to add a new pothole!
+                        Send email subject Hack to <b><a href="SendGrid();">ktu219@gmail.com</a></b> 
+                        or text 'Hack' to <b>(617)762-5111</b> to add a new pothole!
                     </div>
                 </div>
             </div>
@@ -85,6 +84,8 @@ body {
 <script src="assets/js/jquery-1.10.2.js"></script>
 <script src="assets/js/bootstrap.js"></script>
 <script>
+    var DEBUG = false;
+
     // Provide your access token
     L.mapbox.accessToken = 'pk.eyJ1Ijoia3R1MjE5IiwiYSI6IjkwX0N0aTgifQ.Os2lgM6CNYzUaECUYT0kWA';
     // Create a map in the div #map
@@ -173,8 +174,10 @@ body {
 
     function start() {
         console.log("--start--");
-        
-        //return;
+
+        if (DEBUG)
+            return;
+
         pothole.interval = setInterval(function(){
             parseAndUpdateReportLog(pothole.lastupdate);
             updateMarkerToMap(pothole.updateMarkerTime);
@@ -204,7 +207,7 @@ body {
                 console.log(data);
                 //myLayer.setGeoJSON(data);
                 if (data.length ==0)
-                	return;
+                    return;
 
                 lastupdatetime = (data[data.length-1].time > data[0].time) ? data[data.length-1].time : data[0].time;
                 pothole.updateMarkerTime = lastupdatetime;
@@ -215,14 +218,14 @@ body {
 
     // Safe? add unlimited layer to map
     function addMarkerToNewFeatureLayer(data) {
-    	console.log("--addMarkerToNewFeatureLayer--");
-    	var myLayer = L.mapbox.featureLayer().addTo(map);
-    	myLayer.on('layeradd', function(e) {
-	        var marker = e.layer,
-	            feature = marker.feature;
-	        marker.setIcon(L.icon(feature.properties.icon));
+        console.log("--addMarkerToNewFeatureLayer--");
+        var myLayer = L.mapbox.featureLayer().addTo(map);
+        myLayer.on('layeradd', function(e) {
+            var marker = e.layer,
+                feature = marker.feature;
+            marker.setIcon(L.icon(feature.properties.icon));
         });
-        myLayer.setGeoJSON(data);	
+        myLayer.setGeoJSON(data);    
     }
 
     // Update report log to div
@@ -257,6 +260,10 @@ body {
             pothole.colorset = 1;
         else 
             pothole.colorset = 0;
+    }
+
+    function SendGrid() {
+    	console.log("SendGrid");
     }
 
 </script>
