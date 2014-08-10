@@ -15,3 +15,21 @@ indexes:
   - name: location_geocells
   - name: case_status
     direction: desc
+
+- kind: PotholeReportLog
+  properties:
+  - name: time
+  - name: changeLog
+
+- kind: PotholeReportLog
+  properties:
+  - name: time
+  - name: message
+  - name: user
+
+- kind: PotholeReportLog
+  properties:
+  - name: time
+    direction: desc
+  - name: message
+  - name: user

@@ -5,11 +5,12 @@ from geo.geomodel import GeoModel
 
 class Pothole(GeoModel):
   case_status = db.StringProperty()
+  report_type = db.StringProperty()
 
   @staticmethod
   def public_attributes():
     """Returns a set of simple attributes on public school entities."""
-    return ['case_status']
+    return ['case_status', 'report_type']
 
   def _set_location(self, lat, lon):
     self.location = db.GeoPt( lat, lon)
@@ -28,3 +29,12 @@ class Pothole(GeoModel):
       self.location = db.GeoPt()
     self.location.lon = lon
   longitude = property(_get_longitude, _set_longitude)
+
+class PotholeReportLog(db.Model):
+  user = db.StringProperty()
+  message = db.StringProperty()
+  time = db.DateTimeProperty(auto_now_add=True)
+
+
+
+

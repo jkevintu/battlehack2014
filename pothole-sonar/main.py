@@ -15,6 +15,7 @@ from geo import geotypes
 # ------  GAE Datastore -----
 from google.appengine.ext import db
 from dbmodel import Pothole
+from dbmodel import PotholeReportLog
 
 def _merge_dicts(*args):
   """Merges dictionaries right to left. Has side effects for each argument."""
@@ -50,19 +51,54 @@ class PotholeReportAPI(AppHandler):
             )
             return self.response.out.write(self.json_output(json_result, callback))
 
+        ip = str(self.request.remote_addr)
+        user = self.request.get('user')
+
+        # Add pothole
         new_pothole = Pothole()
         new_pothole._set_location(lat, lon)
         #new_pothole._set_latitude(lat)
         #new_pothole._set_longitude(lon)
         new_pothole.update_location()
         new_pothole.case_status = "Open"
+        new_pothole.report_type = "web_app"
         new_pothole.put()
+
+        # Add potholelog
+        new_pothole_log = PotholeReportLog()
+        if user == "":
+        	user = ip
+        new_pothole_log.user = user
+        new_pothole_log.message = "Web User "+user+" add a pothole @lat:"+str(lat)+" lon:"+str(lon)
+        new_pothole_log.put()
 
         json_result = dict(
             status = 'success',
             message = 'Add pothole success!'
         )
         self.response.out.write(self.json_output(json_result, callback))
+
+
+class PotholeShowLogAPI(AppHandler):
+    def get(self):
+        callback = self.request.get('callback')     #jsonp call back
+        logDB = db.GqlQuery(
+                    "SELECT user,message,time FROM PotholeReportLog "
+                    "ORDER by time DESC"
+                )
+        logResults = logDB.fetch(10)
+
+        output = []
+        for log in logResults:
+            log_json = dict(
+                    user      = str(log.user),
+                    message = str(log.message),
+                    time = str(log.time)
+                )
+            output.append(log_json)
+
+        self.response.out.write(self.json_output(output, callback))
+
 
 class PotholeShowAPI(AppHandler):
     def get(self):
@@ -98,7 +134,8 @@ class PotholeShowAPI(AppHandler):
             'lng': result.location.lon,
             },
             {'case_status': str(result.case_status),
-             'id': str(result.key().id())
+             'id': str(result.key().id()),
+             'report_type': str(result.type)
             })
             #{dict([(attr, getattr(result, attr))
             #                  for attr in public_attrs])})
@@ -115,5 +152,6 @@ class PotholeShowAPI(AppHandler):
 app = webapp2.WSGIApplication([
     ('/', IndexHandler),
     ('/api/show', PotholeShowAPI),
+    ('/api/showlog', PotholeShowLogAPI),
     ('/api/report', PotholeReportAPI),
 ], debug=True)
