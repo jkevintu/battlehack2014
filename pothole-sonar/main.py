@@ -1,5 +1,6 @@
+from __future__ import with_statement
 #
-#	Battle hack 2014 - Pothole sonar
+#    Battle hack 2014 - Pothole sonar
 #
 #
 # links:
@@ -9,19 +10,107 @@
 import os
 import webapp2
 from google.appengine.ext.webapp import template
+from geo import geotypes
+
 # ------  GAE Datastore -----
-from google.appengine.ext import ndb
-import dbmodel
+from google.appengine.ext import db
+from dbmodel import Pothole
+
+def _merge_dicts(*args):
+  """Merges dictionaries right to left. Has side effects for each argument."""
+  return reduce(lambda d, s: d.update(s) or d, args)
 
 class BaseHandler(webapp2.RequestHandler):
     def render_template(self, file, template_args):
         path = os.path.join(os.path.dirname(__file__), file)
         self.response.out.write(template.render(path, template_args))
 
+class AppHandler(webapp2.RequestHandler):
+    def json_output(self, json_output, callback):
+        json_output = str(json_output).replace("'",'"')
+        if callback:
+            return callback+"("+json_output+");"
+        else:
+            return json_output
+
 class IndexHandler(BaseHandler):
     def get(self):
         self.render_template("index.html", dict())
 
+class PotholeReportAPI(AppHandler):
+    def get(self):
+        callback = self.request.get('callback')     #jsonp call back
+        lat = float(self.request.get('lat'))
+        lon = float(self.request.get('lon'))
+
+        if not lat or not lon:
+            json_result = dict(
+                status = 'error',
+                message = 'No lat or lon!'
+            )
+            return self.response.out.write(self.json_output(json_result, callback))
+
+        new_pothole = Pothole()
+        new_pothole._set_location(lat, lon)
+        #new_pothole._set_latitude(lat)
+        #new_pothole._set_longitude(lon)
+        new_pothole.case_status = "Open"
+        new_pothole.put()
+
+        json_result = dict(
+            status = 'success',
+            message = 'Add pothole success!'
+        )
+        self.response.out.write(self.json_output(json_result, callback))
+
+class PotholeShowAPI(AppHandler):
+    def get(self):
+        callback = self.request.get('callback')     #jsonp call back
+
+        try:
+            center = geotypes.Point(float(self.request.get('lat')),float(self.request.get('lon')))
+        except ValueError:
+            json_result = dict(
+                status = 'error',
+                message = 'lat and lon parameters must be valid latitude and longitude values.'
+            )
+            return self.response.out.write(self.json_output(json_result, callback))
+
+        max_results = 100
+        if self.request.get('maxresults'):
+          max_results = int(self.request.get('maxresults'))
+        
+        max_distance = 1000 # 80 km ~ 50 mi
+        if self.request.get('maxdistance'):
+          max_distance = float(self.request.get('maxdistance'))
+
+        # Query start
+        base_query = Pothole.all()
+        results = Pothole.proximity_fetch(
+            base_query,
+            center, max_results=max_results, max_distance=max_distance)
+
+        print results
+
+        public_attrs = Pothole.public_attributes()
+        results_obj = [
+          _merge_dicts({
+            'lat': result.location.lat,
+            'lng': result.location.lon,
+            },
+            dict([(attr, getattr(result, attr))
+                  for attr in public_attrs]))
+          for result in results]
+
+        json_result = dict(
+            status = 'success',
+            results = results_obj
+        )
+        self.response.out.write(self.json_output(json_result, callback))
+
+
 app = webapp2.WSGIApplication([
-    ('/', IndexHandler)
+    ('/', IndexHandler),
+    ('/api/show', PotholeShowAPI),
+    ('/api/report', PotholeReportAPI),
 ], debug=True)
