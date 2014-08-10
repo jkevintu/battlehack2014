@@ -97,7 +97,9 @@ class PotholeShowAPI(AppHandler):
             'lat': result.location.lat,
             'lng': result.location.lon,
             },
-            {'case_status': str(result.case_status)})
+            {'case_status': str(result.case_status),
+             'id': str(result.key().id())
+            })
             #{dict([(attr, getattr(result, attr))
             #                  for attr in public_attrs])})
           for result in results]
