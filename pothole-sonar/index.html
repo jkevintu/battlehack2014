@@ -58,14 +58,13 @@ body {
                 </div>
                 <div class="col-xs-12 col-sm-3">
                     <div class="reportlog">
-                        Web User ::1 add a pothole @lat:42.241185 lon:-71.17035
                     </div>
                 </div>
             </div>
             <div class="row">
                 <div class="col-xs-12 col-sm-12">
                     <div class="alert alert-info text-center" role="alert">
-                        Send email subject Hack to <b><a href="SendGrid();">ktu219@gmail.com</a></b> 
+                        Send email subject Hack to <b><a href="/api/sendgrid">ktu219@gmail.com</a></b> 
                         or text 'Hack' to <b>(617)762-5111</b> to add a new pothole!
                     </div>
                 </div>
@@ -230,7 +229,7 @@ body {
 
     // Update report log to div
     function parseAndUpdateReportLog (time){
-        //console.log("--parseAndUpdateReportLog--");
+        console.log("--parseAndUpdateReportLog--");
         var url = "/api/showlog";
         //url = {{baseUrl}} + "/api/syncdisplay?callback=?";
         if (pothole.reportLogLock)
@@ -263,7 +262,7 @@ body {
     }
 
     function SendGrid() {
-    	console.log("SendGrid");
+        console.log("SendGrid");
     }
 
 </script>

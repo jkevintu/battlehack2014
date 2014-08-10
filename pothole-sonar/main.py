@@ -15,6 +15,9 @@ import logging
 from datetime import datetime, timedelta    #for timezone
 import time
 import urllib2, urllib, urlparse            #for url parse
+import random
+from random import choice
+import math
 
 # ------  GAE Datastore -----
 from google.appengine.ext import db
@@ -91,17 +94,19 @@ class PotholeReportAPI(AppHandler):
         logging.debug("I get someone posting something from "+report_type+"!")
 
         # Center 42.3514/-71.0554
+        # Demo = lat=42.3514&lon=-71.0554
+        #
         pothole_contextio = dict( lat = 42.3518, lon = -71.0558 )
         pothole_twilio = dict( lat =  42.3510, lon =  -71.0550 )
         
         if report_type == "contextio":
             user = "Context.io"
-            lat = pothole_contextio["lat"]
-            lon = pothole_contextio["lon"]
+            lat = pothole_contextio["lat"] + random.uniform( 0, 0.01)
+            lon = pothole_contextio["lon"] + random.uniform( 0, 0.01)
         elif report_type == "twilio":
-	        user = "twilio"
-	        lat = pothole_twilio["lat"]
-	        lon = pothole_twilio["lon"]
+            user = "twilio"
+            lat = pothole_twilio["lat"] - random.uniform( 0, 0.01)
+            lon = pothole_twilio["lon"] - random.uniform( 0, 0.01)
         self.addpothole( lat, lon, user, report_type)
 
         json_result = dict(
@@ -197,22 +202,22 @@ class PotholeShowAPI(AppHandler):
                 iconAnchor =  [15, 15],
                 popupAnchor = [0, -15],
                 className = "dot"
-        	)
+            )
         icon_contextio = dict (
                 iconUrl = baseurl + "/assets/img/pothole-contextio.png",
                 iconSize = [30, 30],
                 iconAnchor =  [15, 15],
                 popupAnchor = [0, -15],
                 className = "dot"
-        	)
+            )
         if json_type == "geojson":
             for pothole in potholeResults:
-            	if pothole.report_type == "twilio":
-            		icon_set = icon_twilio
-            	elif pothole.report_type == "contextio":
-            		icon_set = icon_contextio
-            	else:
-            		icon_set = icon_preset
+                if pothole.report_type == "twilio":
+                    icon_set = icon_twilio
+                elif pothole.report_type == "contextio":
+                    icon_set = icon_contextio
+                else:
+                    icon_set = icon_preset
                 pothole_json = dict(
                     time = str(pothole.time),
                     type = "Feature",
@@ -289,11 +294,26 @@ class PotholeShowAPI(AppHandler):
         self.response.out.write(self.json_output(json_result, callback))
 
 class SendGridAPI(AppHandler):
-	def get(self):
-		sg = sendgrid.SendGridClient('ktu219', 'a0920788681')
-		message = sendgrid.Mail(to='ktu219@gmail.com', subject='Example', html='Body', text='Body', from_email='doe@email.com')
-		status, msg = sg.send(message)
-		self.response.out.write("success")
+    def get(self):
+        callback = self.request.get('callback')     #jsonp call back
+        sg = sendgrid.SendGridClient('ktu219', 'a0920788681')
+        html = "<h1>Pothole Report</h1><hr/>"
+        logDB = db.GqlQuery(
+                    "SELECT message FROM PotholeReportLog "
+                )
+        logResults = logDB.fetch(100)
+        output = []
+        for log in logResults:
+        	html += "<div class=''><h3>"+log.message+"</h3></div>"
+
+        message = sendgrid.Mail(to='ppjoey@gmail.com', subject='BattleHack 2014 : Pothole Report', html= html, text="Report is generated in text", from_email='report@pothole-sonar.com')
+        status, msg = sg.send(message)
+
+        json_result = dict(
+            status = 'success',
+            message = "report is now sent to your email:"
+        )
+        self.response.out.write(self.json_output(json_result, callback))
 
 
 app = webapp2.WSGIApplication([
