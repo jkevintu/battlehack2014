@@ -24,8 +24,6 @@ __author__ = 'api.roman.public@gmail.com (Roman Nurik)'
 
 import copy
 import logging
-import math
-import sys
 
 from google.appengine.ext import db
 
@@ -100,26 +98,28 @@ class GeoModel(db.Model):
       cost_function = default_cost_function
     query_geocells = geocell.best_bbox_search_cells(bbox, cost_function)
 
-    if query_geocells:
-      for entity in query.filter('location_geocells IN', query_geocells):
-        if len(results) == max_results:
-          break
-        if (entity.location.lat >= bbox.south and
-            entity.location.lat <= bbox.north and
-            entity.location.lon >= bbox.west and
-            entity.location.lon <= bbox.east):
-          results.append(entity)
+    results = util.async_in_query_fetch(
+        query, 'location_geocells', query_geocells, max_results=max_results,
+        debug=DEBUG)
 
     if DEBUG:
-      logging.info('bbox query looked in %d geocells' % len(query_geocells))
+      logging.debug(('GeoModel Bounds Query: '
+                     'Looked in %d geocells') %
+                    (len(query_geocells),))
 
-    return results
+    # In-memory filter.
+    return [entity for entity in results if
+        entity.location.lat >= bbox.south and
+        entity.location.lat <= bbox.north and
+        entity.location.lon >= bbox.west and
+        entity.location.lon <= bbox.east]
 
   @staticmethod
-  def proximity_fetch(query, center, max_results=10, max_distance=0):
+  def proximity_fetch(query, center, max_results=10, max_distance=0,
+                      start_resolution=geocell.MAX_GEOCELL_RESOLUTION):
     """Performs a proximity/radius fetch on the given query.
 
-    Fetches at most <max_results> entities matching the given query,
+    Fetches at most max_results entities matching the given query,
     ordered by ascending distance from the given center point, and optionally
     limited by the given maximum distance.
 
@@ -137,6 +137,10 @@ class GeoModel(db.Model):
           will take.
       max_distance: An optional number indicating the maximum distance to
           search, in meters.
+      start_resolution: An optional number indicating the geocell resolution
+          to begin the search at. Larger values will result in longer response
+          times on average, but are more efficient for extremely dense data.
+          The default is geocell.MAX_GEOCELL_RESOLUTION
 
     Returns:
       The fetched entities, sorted in ascending order by distance to the search
@@ -151,7 +155,7 @@ class GeoModel(db.Model):
     searched_cells = set()
 
     # The current search geocell containing the lat,lon.
-    cur_containing_geocell = geocell.compute(center)
+    cur_containing_geocell = geocell.compute(center, start_resolution)
 
     # The currently-being-searched geocells.
     # NOTES:
@@ -162,6 +166,9 @@ class GeoModel(db.Model):
     cur_geocells = [cur_containing_geocell]
 
     closest_possible_next_result_dist = 0
+    
+    sorted_edge_dirs = [(0,0)]
+    sorted_edge_distances = [0]
 
     # Assumes both a and b are lists of (entity, dist) tuples, *sorted by dist*.
     # NOTE: This is an in-place merge, and there are guaranteed
@@ -170,27 +177,24 @@ class GeoModel(db.Model):
       util.merge_in_place(a, b,
                         cmp_fn=lambda x, y: cmp(x[1], y[1]),
                         dup_fn=lambda x, y: x[0].key() == y[0].key())
-
-    sorted_edges = [(0,0)]
-    sorted_edge_distances = [0]
+    
+    def _first_horz(edges):
+      return [x for x in edges if x[0] != 0][0]
+    
+    def _first_vert(edges):
+      return [x for x in edges if x[0] == 0][0]
 
     while cur_geocells:
-      closest_possible_next_result_dist = sorted_edge_distances[0]
-      if max_distance and closest_possible_next_result_dist > max_distance:
-        break
-
       cur_geocells_unique = list(set(cur_geocells).difference(searched_cells))
+      cur_resolution = len(cur_geocells[0])
 
       # Run query on the next set of geocells.
-      cur_resolution = len(cur_geocells[0])
-      temp_query = copy.deepcopy(query)  # TODO(romannurik): is this safe?
-      temp_query.filter('location_geocells IN', cur_geocells_unique)
+      new_results = util.async_in_query_fetch(
+          query, 'location_geocells', cur_geocells_unique,
+          max_results=max_results * len(cur_geocells_unique),
+          debug=DEBUG)
 
       # Update results and sort.
-      new_results = temp_query.fetch(1000)
-      if DEBUG:
-        logging.info('fetch complete for %s' % (','.join(cur_geocells_unique),))
-
       searched_cells.update(cur_geocells)
 
       # Begin storing distance from the search result entity to the
@@ -210,8 +214,21 @@ class GeoModel(db.Model):
 
       results = results[:max_results]
 
-      sorted_edges, sorted_edge_distances = \
-          util.distance_sorted_edges(cur_geocells, center)
+      if DEBUG:
+        logging.debug(('GeoModel Proximity Query: '
+                       'Have %d results') %
+                      (len(results),))
+      
+      if len(results) >= max_results:
+        if DEBUG:
+          logging.debug(('GeoModel Proximity Query: '
+                         'Wanted %d results, ending search') %
+                        (max_results,))
+        break
+      
+      # Determine the next set of geocells to search.
+      sorted_edge_dirs, _ = \
+          util.distance_sorted_edges(util.max_box(cur_geocells), center)
 
       if len(results) == 0 or len(cur_geocells) == 4:
         # Either no results (in which case we optimize by not looking at
@@ -220,62 +237,79 @@ class GeoModel(db.Model):
         # geocells.
         cur_containing_geocell = cur_containing_geocell[:-1]
         cur_geocells = list(set([cell[:-1] for cell in cur_geocells]))
+        
         if not cur_geocells or not cur_geocells[0]:
           break  # Done with search, we've searched everywhere.
+        
+        if len(cur_geocells) == 2:
+          # There are two parents for the 4 just-searched cells; get 2
+          # perpendicular adjacent parents to search a full set of 4 cells.
+          perp_dir = (_first_vert(sorted_edge_dirs)
+                      if geocell.collinear(cur_geocells[0],
+                                           cur_geocells[1], False)
+                      else _first_horz(sorted_edge_dirs))
+          
+          cur_geocells.extend(
+              filter(lambda x: x is not None, [
+                     geocell.adjacent(cur_geocells[0], perp_dir),
+                     geocell.adjacent(cur_geocells[1], perp_dir)]))
 
       elif len(cur_geocells) == 1:
-        # Get adjacent in one direction.
-        # TODO(romannurik): Watch for +/- 90 degree latitude edge case geocells.
-        nearest_edge = sorted_edges[0]
-        cur_geocells.append(geocell.adjacent(cur_geocells[0], nearest_edge))
-
-      elif len(cur_geocells) == 2:
-        # Get adjacents in perpendicular direction.
-        nearest_edge = util.distance_sorted_edges([cur_containing_geocell],
-                                                   center)[0][0]
-        if nearest_edge[0] == 0:
-          # Was vertical, perpendicular is horizontal.
-          perpendicular_nearest_edge = [x for x in sorted_edges if x[0] != 0][0]
-        else:
-          # Was horizontal, perpendicular is vertical.
-          perpendicular_nearest_edge = [x for x in sorted_edges if x[0] == 0][0]
-
+        # Searched one geocell, now search its 3 adjacents.
+        horz_dir = _first_horz(sorted_edge_dirs)
+        vert_dir = _first_vert(sorted_edge_dirs)
+        diag_dir = (horz_dir[0], vert_dir[1])
+        
         cur_geocells.extend(
-            [geocell.adjacent(cell, perpendicular_nearest_edge)
-             for cell in cur_geocells])
+            filter(lambda x: x is not None, [
+                   geocell.adjacent(cur_geocells[0], horz_dir),
+                   geocell.adjacent(cur_geocells[0], vert_dir),
+                   geocell.adjacent(cur_geocells[0], diag_dir)]))
 
-      # We don't have enough items yet, keep searching.
-      if len(results) < max_results:
-        if DEBUG:
-          logging.debug('have %d results but want %d results, '
-                        'continuing search' % (len(results), max_results))
-        continue
-
+      # Stop the search if the next closest possible search result is farther
+      # than max_distance or, if we have max_results results already, farther
+      # than the last result.
+      _, sorted_edge_distances = \
+          util.distance_sorted_edges(util.max_box(cur_geocells), center)
+      closest_possible_next_result_dist = sorted_edge_distances[0]
+      
       if DEBUG:
-        logging.debug('have %d results' % (len(results),))
-
-      # If the currently max_results'th closest item is closer than any
-      # of the next test geocells, we're done searching.
-      current_farthest_returnable_result_dist = \
-          geomath.distance(center, results[max_results - 1][0].location)
-      if (closest_possible_next_result_dist >=
-          current_farthest_returnable_result_dist):
+        logging.debug(('GeoModel Proximity Query: '
+                       'Next result at least %f meters away') %
+                      (closest_possible_next_result_dist,))
+      
+      if max_distance and closest_possible_next_result_dist > max_distance:
         if DEBUG:
-          logging.debug('DONE next result at least %f away, '
-                        'current farthest is %f dist' %
+          logging.debug(('GeoModel Proximity Query: '
+                         'Done! Next result at least %f meters away, '
+                         'max disance is %f meters') %
+                        (closest_possible_next_result_dist, max_distance))
+        break
+      
+      if len(results) >= max_results:
+        current_farthest_returnable_result_dist = \
+            geomath.distance(center, results[max_results - 1][0].location)
+        if (closest_possible_next_result_dist >=
+            current_farthest_returnable_result_dist):
+          if DEBUG:
+            logging.debug(('GeoModel Proximity Query: '
+                           'Done! Next result at least %f meters away, '
+                           'current farthest is %f meters away') %
+                          (closest_possible_next_result_dist,
+                           current_farthest_returnable_result_dist))
+          break
+        
+        if DEBUG:
+          logging.debug(('GeoModel Proximity Query: '
+                         'Next result at least %f meters away, '
+                         'current farthest is %f meters away') %
                         (closest_possible_next_result_dist,
                          current_farthest_returnable_result_dist))
-        break
-
-      if DEBUG:
-        logging.debug('next result at least %f away, '
-                      'current farthest is %f dist' %
-                      (closest_possible_next_result_dist,
-                       current_farthest_returnable_result_dist))
 
     if DEBUG:
-      logging.info('proximity query looked '
-                   'in %d geocells' % len(searched_cells))
+      logging.debug(('GeoModel Proximity Query: '
+                     'Looked in %d geocells') %
+                    (len(searched_cells),))
 
     return [entity for (entity, dist) in results[:max_results]
             if not max_distance or dist < max_distance]

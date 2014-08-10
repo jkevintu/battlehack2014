@@ -54,6 +54,7 @@ class PotholeReportAPI(AppHandler):
         new_pothole._set_location(lat, lon)
         #new_pothole._set_latitude(lat)
         #new_pothole._set_longitude(lon)
+        new_pothole.update_location()
         new_pothole.case_status = "Open"
         new_pothole.put()
 
@@ -80,7 +81,7 @@ class PotholeShowAPI(AppHandler):
         if self.request.get('maxresults'):
           max_results = int(self.request.get('maxresults'))
         
-        max_distance = 1000 # 80 km ~ 50 mi
+        max_distance = 8000 # 80 km ~ 50 mi
         if self.request.get('maxdistance'):
           max_distance = float(self.request.get('maxdistance'))
 
@@ -90,20 +91,20 @@ class PotholeShowAPI(AppHandler):
             base_query,
             center, max_results=max_results, max_distance=max_distance)
 
-        print results
-
         public_attrs = Pothole.public_attributes()
         results_obj = [
           _merge_dicts({
             'lat': result.location.lat,
             'lng': result.location.lon,
             },
-            dict([(attr, getattr(result, attr))
-                  for attr in public_attrs]))
+            {'case_status': str(result.case_status)})
+            #{dict([(attr, getattr(result, attr))
+            #                  for attr in public_attrs])})
           for result in results]
 
         json_result = dict(
             status = 'success',
+            total = str(len(results)),
             results = results_obj
         )
         self.response.out.write(self.json_output(json_result, callback))
