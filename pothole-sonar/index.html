@@ -33,6 +33,9 @@ body {
 .bold {
     font-weight: bold;
 }
+nav .alert {
+    margin-bottom: 0;
+}
 </style>
     <title>Battle Hack 2014 : Pothole Sonar</title>
     <!-- Map box -->
@@ -54,31 +57,27 @@ body {
     </div>
     <div class="content">
             <div class="row">
-                <div class="col-xs-12 col-sm-9">
-                </div>
-                <div class="col-xs-12 col-sm-3">
+                <div class="col-xs-12 col-sm-3 col-sm-offset-9">
                     <div class="reportlog">
                     </div>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-xs-12 col-sm-12">
-                    <div class="alert alert-info text-center" role="alert">
-                        Send email subject Hack to <b><a href="/api/sendgrid">ktu219@gmail.com</a></b> 
-                        or text 'Hack' to <b>(617)762-5111</b> to add a new pothole!
-                    </div>
-                </div>
-            </div>
     </div>
 </div>
-<div class="footer">
+<nav class="navbar-fixed-bottom">
     <div class="container">
         <div class="row">
             <div class="col-xs-12 col-sm-12">
-                <h6>Copyright © 2014 Team CharmPI. @BattleHack2014</h6>
+                <div class="alert alert-info text-center" role="alert">
+                    Send email subject Hack to <b><a href="/api/sendgrid">ktu219@gmail.com</a></b> 
+                    or text 'Hack' to <b>(617)762-5111</b> to add a new pothole!
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-12">
+                <h6 class="pull-right">Copyright © 2014 Team CharmPI. @BattleHack2014</h6>
             </div>
     </div>
-</div>
+</nav>
 <!-- JavaScript -->
 <script src="assets/js/jquery-1.10.2.js"></script>
 <script src="assets/js/bootstrap.js"></script>
