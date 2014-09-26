@@ -1,0 +1,102 @@
+<html>
+<head>
+<link href="assets/css/bootstrap.css" rel="stylesheet">
+<script src="assets/js/jquery-1.11.0.min.js"></script>
+<style>
+</style>
+    <title>Pothole Sonar Admin</title>
+</head>
+<body>
+    <div class="main container">
+        <div class="row">
+            <div class="col-xs-12 col-sm-12">
+                <h1>Pothole Sonar Dashboard</h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12 col-sm-6">
+                <h3>Add a pothole</h3>
+                <div class="input-group">
+                    <span class="input-group-addon">Lat</span><input id="reportLat" type="text" class="form-control"/>
+                    <span class="input-group-addon">Lon</span><input id="reportLon" type="text" class="form-control"/>
+                    <span class="input-group-btn">
+                        <button id="reportPothole" class="btn btn-primary" type="button">ADD</button>
+                    </span>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-12">
+            </div>
+        </div>
+        <hr/>
+        <div class="row">
+            <div class="col-xs-12 col-sm-10">
+                <h3>Query pothole</h3>
+                <div class="input-group">
+                    <span class="input-group-addon">Lat</span><input id="showLat" type="text" class="form-control"/>
+                    <span class="input-group-addon">Lon</span><input id="showLon" type="text" class="form-control"/>
+                    <span class="input-group-addon">Distance</span><input id="showDistance" type="text" class="form-control"/>
+                    <span class="input-group-btn">
+                        <button id="showPothole" class="btn btn-primary" type="button">Search</button>
+                    </span>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-12">
+
+            </div>
+        </div>
+
+
+    </div>
+    <script type="text/javascript">
+
+    // Document ready
+    $(function(){
+        bikeSonar.init();
+    });
+
+    var bikeSonar = {
+        init : function(){
+            $("#reportPothole").click(this.report);
+            $("#showPothole").click(this.show);
+        },
+        report : function() {
+            var lat = $("#reportLat").val();
+            var lon = $("#reportLon").val();
+            console.log(lat,lon);
+            $.getJSON(
+                "api/report",{
+                    lat: lat,
+                    lon: lon,
+                }).done(function(data){
+                    console.log(data);
+                    if (data.length ==0)
+                        return;
+                });
+        },
+        show : function () {
+            console.log("--show-- "+ time);
+            var lat = $("#showLat").val();
+            var lon = $("#showLon").val();
+            var url = "api/show";
+            $.getJSON(
+                url, { 
+                    lat: lat,
+                    lon: lon,
+                    time: time,
+                    jsontype: "geojson" 
+                }
+                ).done(function(data) {
+                    console.log(data);
+                    //myLayer.setGeoJSON(data);
+                    if (data.length ==0)
+                        return;
+                }
+            )
+        }
+    };
+
+
+    </script>
+
+</body>
+</html>

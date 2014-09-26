@@ -52,7 +52,7 @@ class IndexHandler(BaseHandler):
         args = dict(
             baseurl = baseurl
             )
-        self.render_template("index.html", args)
+        self.render_template("index-admin.html", args)
 
 # =report
 class PotholeReportAPI(AppHandler):
