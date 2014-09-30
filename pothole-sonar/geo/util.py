@@ -194,12 +194,19 @@ def async_in_query_fetch(query, property_name, values, max_results=1000,
                    *entities_by_value)
     return entities_by_value[0][:max_results]
   else:
+    # -- Fix bug for async_in_query_fetch -- 
     # Return max_results entities, proportionally by geocell, since there
     # is no ordering.
-    total_results = sum(len(val_entities) for val_entities in entities_by_value)
-    if not total_results:
-      return []
-    _numkeep = lambda arr: int(math.ceil(len(arr) * 1.0 / total_results))
-    entities_by_value = [val_entities[:_numkeep(val_entities)]
-                         for val_entities in entities_by_value]
-    return reduce(lambda x, y: x + y, entities_by_value)
+    results = []
+    iters = [iter(val_entities) for val_entities in entities_by_value]
+    iter_index = 0
+    while len(results) < max_results and len(iters) > 0:
+        iter_index = iter_index%len(iters)
+        current_iter = iters[iter_index]
+        try:
+            results.append(current_iter.next())
+            iter_index = iter_index + 1
+        except StopIteration:
+            del iters[iter_index]
+    return results
+    # -- Fix end --

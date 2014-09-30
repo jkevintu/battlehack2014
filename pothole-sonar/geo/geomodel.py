@@ -207,6 +207,10 @@ class GeoModel(db.Model):
 
       # Merge new_results into results or the other way around, depending on
       # which is larger.
+      logging.info("#Results :")
+      logging.info(results)
+      logging.info("#new_results :")
+      logging.info(new_results)
       if len(results) > len(new_results):
         _merge_results_in_place(results, new_results)
       else:
@@ -222,7 +226,7 @@ class GeoModel(db.Model):
       
       if len(results) >= max_results:
         if DEBUG:
-          logging.debug(('GeoModel Proximity Query: '
+          logging.info(('GeoModel Proximity Query: '
                          'Wanted %d results, ending search') %
                         (max_results,))
         break
@@ -275,13 +279,13 @@ class GeoModel(db.Model):
       closest_possible_next_result_dist = sorted_edge_distances[0]
       
       if DEBUG:
-        logging.debug(('GeoModel Proximity Query: '
+        logging.info(('GeoModel Proximity Query: '
                        'Next result at least %f meters away') %
                       (closest_possible_next_result_dist,))
       
       if max_distance and closest_possible_next_result_dist > max_distance:
         if DEBUG:
-          logging.debug(('GeoModel Proximity Query: '
+          logging.info(('GeoModel Proximity Query: '
                          'Done! Next result at least %f meters away, '
                          'max disance is %f meters') %
                         (closest_possible_next_result_dist, max_distance))
@@ -293,7 +297,7 @@ class GeoModel(db.Model):
         if (closest_possible_next_result_dist >=
             current_farthest_returnable_result_dist):
           if DEBUG:
-            logging.debug(('GeoModel Proximity Query: '
+            logging.info(('GeoModel Proximity Query: '
                            'Done! Next result at least %f meters away, '
                            'current farthest is %f meters away') %
                           (closest_possible_next_result_dist,
@@ -301,14 +305,14 @@ class GeoModel(db.Model):
           break
         
         if DEBUG:
-          logging.debug(('GeoModel Proximity Query: '
+          logging.info(('GeoModel Proximity Query: '
                          'Next result at least %f meters away, '
                          'current farthest is %f meters away') %
                         (closest_possible_next_result_dist,
                          current_farthest_returnable_result_dist))
 
     if DEBUG:
-      logging.debug(('GeoModel Proximity Query: '
+      logging.info(('GeoModel Proximity Query: '
                      'Looked in %d geocells') %
                     (len(searched_cells),))
 

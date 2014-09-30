@@ -20,7 +20,7 @@
     .color-success {
         color: #33a030;
     }
-    .reportStatus span {
+    .reportStatus span, .searchStatus span, #markerResultsOuter {
         display: none;
     }
 </style>
@@ -47,12 +47,9 @@
                 </div>     
                 <div class="reportStatus">
                     <br/>
-                    <span id="reportLoading" class="glyphicon glyphicon-refresh glyphicon-refresh-animate"></span>
-                    <span id="reportSuccess" class="glyphicon glyphicon-ok color-success"></span>
+                    <span id="reportLoading" class="loading glyphicon glyphicon-refresh glyphicon-refresh-animate"></span>
+                    <span id="reportSuccess" class="success glyphicon glyphicon-ok color-success"></span>
                 </div>
-           
-            </div>
-            <div class="col-xs-12 col-sm-12">
             </div>
         </div>
         <hr/>
@@ -70,8 +67,18 @@
                         <button id="showPothole" class="btn btn-primary" type="button">Search</button>
                     </span>
                 </div>
+                <div class="searchStatus">
+                    <br/>
+                    <span id="searchLoading" class="loading glyphicon glyphicon-refresh glyphicon-refresh-animate"></span>
+                    <span id="searchSuccess" class="success glyphicon glyphicon-ok color-success"></span>
+                </div>
             </div>
+
+        </div>
+        <hr/>
+        <div class="row" id="markerResultsOuter">
             <div class="col-xs-12 col-sm-12">
+                <h3>Markers</h3>
                 <table id="markerResults" class="table table-striped">
                     <thead>
                         <td> Marker Id </td>
@@ -100,23 +107,25 @@
             // Default parameter
             self = this;
             self.reportLock = false;
+            self.searchLock = false;
 
             // Function bind
             $("#reportPothole").click(self.report);
             $("#showPothole").click(self.show);
         },
-        showIconId : function(objectId) {
+        showById : function(objectId) {
             $("#"+objectId).show();
         },
-        hideIconId : function(objectId) {
+        hideById : function(objectId) {
             $("#"+objectId).hide();
         },
         report : function() {
+            console.log("  -- Report marker -- ");
             if (self.reportLock)
                 return;
             self.reportLock = true;
-            self.hideIconId("reportSuccess");
-            self.showIconId("reportLoading");
+            self.hideById("reportSuccess");
+            self.showById("reportLoading");
             var lat = $("#reportLat").val();
             var lon = $("#reportLon").val();
             console.log(lat,lon);
@@ -127,8 +136,8 @@
                 }).done(function(data){
                     setInterval(function(){
                         self.reportLock = false;
-                        self.hideIconId("reportLoading");
-                        self.showIconId("reportSuccess");
+                        self.hideById("reportLoading");
+                        self.showById("reportSuccess");
                     }, 500);
                     console.log(data);
                     if (data.length ==0)
@@ -137,6 +146,11 @@
         },
         show : function () {
             console.log("  -- Show marker -- ");
+            if (self.searchLock)
+                return;
+            self.searchLock = true;
+            self.hideById("searchSuccess");
+            self.showById("searchLoading");
             var lat = $("#showLat").val();
             var lon = $("#showLon").val();
             var distance = $("#showDistance").val();
@@ -150,7 +164,11 @@
                     jsontype: "geojson" 
                 }
                 ).done(function(data) {
-                    //myLayer.setGeoJSON(data);
+                    setInterval(function(){
+                        self.searchLock = false;
+                        self.hideById("searchLoading");
+                        self.showById("searchSuccess");
+                    }, 500);
                     if (data.length ==0)
                         return;
                     self.updateResult(data.results);
@@ -158,8 +176,11 @@
             )
         },
         updateResult : function (markers) {
-            console.log(" -- Update query --")
+            console.log("-- Update results --");
             var table = $("#markerResults tbody");
+
+            // Show table
+            self.showById("markerResultsOuter");
 
             // Remove old table data before append
             table.children("tr").remove();
