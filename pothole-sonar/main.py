@@ -124,6 +124,7 @@ class PotholeReportAPI(AppHandler):
         new_pothole._set_location(lat, lon)
         #new_pothole._set_latitude(lat)
         #new_pothole._set_longitude(lon)
+        # -- UTF-8 issue anchor --
         new_pothole.update_location()
         new_pothole.case_status = "Open"
         new_pothole.report_type = report_type
@@ -171,7 +172,9 @@ class PotholeShowLogAPI(AppHandler):
 # =show
 class PotholeShowAPI(AppHandler):
     def get(self):
+        # Working json code
         callback = self.request.get('callback')     #jsonp call back
+        """
         request_time = self.request.get("time")
         json_type = self.request.get("jsontype")
         urlobject = urlparse.urlparse(self.request.url)
@@ -246,6 +249,7 @@ class PotholeShowAPI(AppHandler):
         self.response.out.write(self.json_output(output, callback))
 
         return
+        """
         #
         #
         # disable approximately search
@@ -276,7 +280,7 @@ class PotholeShowAPI(AppHandler):
         results_obj = [
           _merge_dicts({
             'lat': result.location.lat,
-            'lng': result.location.lon,
+            'lon': result.location.lon,
             },
             {'case_status': str(result.case_status),
              'id': str(result.key().id()),

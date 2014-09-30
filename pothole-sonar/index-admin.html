@@ -3,6 +3,26 @@
 <link href="assets/css/bootstrap.css" rel="stylesheet">
 <script src="assets/js/jquery-1.11.0.min.js"></script>
 <style>
+    .glyphicon-refresh-animate {
+        -animation: spin .7s infinite linear;
+        -webkit-animation: spin2 .7s infinite linear;
+    }
+
+    @-webkit-keyframes spin2 {
+        from { -webkit-transform: rotate(0deg);}
+        to { -webkit-transform: rotate(360deg);}
+    }
+
+    @keyframes spin {
+        from { transform: scale(1) rotate(0deg);}
+        to { transform: scale(1) rotate(360deg);}
+    }
+    .color-success {
+        color: #33a030;
+    }
+    .reportStatus span {
+        display: none;
+    }
 </style>
     <title>Pothole Sonar Admin</title>
 </head>
@@ -17,12 +37,20 @@
             <div class="col-xs-12 col-sm-6">
                 <h3>Add a pothole</h3>
                 <div class="input-group">
-                    <span class="input-group-addon">Lat</span><input id="reportLat" type="text" class="form-control"/>
-                    <span class="input-group-addon">Lon</span><input id="reportLon" type="text" class="form-control"/>
+                    <span class="input-group-addon">Lat</span>
+                    <input id="reportLat" type="text" class="form-control" value="40" />
+                    <span class="input-group-addon">Lon</span>
+                    <input id="reportLon" type="text" class="form-control" value="40" />
                     <span class="input-group-btn">
                         <button id="reportPothole" class="btn btn-primary" type="button">ADD</button>
                     </span>
+                </div>     
+                <div class="reportStatus">
+                    <br/>
+                    <span id="reportLoading" class="glyphicon glyphicon-refresh glyphicon-refresh-animate"></span>
+                    <span id="reportSuccess" class="glyphicon glyphicon-ok color-success"></span>
                 </div>
+           
             </div>
             <div class="col-xs-12 col-sm-12">
             </div>
@@ -32,16 +60,29 @@
             <div class="col-xs-12 col-sm-10">
                 <h3>Query pothole</h3>
                 <div class="input-group">
-                    <span class="input-group-addon">Lat</span><input id="showLat" type="text" class="form-control"/>
-                    <span class="input-group-addon">Lon</span><input id="showLon" type="text" class="form-control"/>
-                    <span class="input-group-addon">Distance</span><input id="showDistance" type="text" class="form-control"/>
+                    <span class="input-group-addon">Lat</span>
+                    <input id="showLat" type="text" class="form-control" value="40" />
+                    <span class="input-group-addon">Lon</span>
+                    <input id="showLon" type="text" class="form-control" value="40" />
+                    <span class="input-group-addon">Distance</span>
+                    <input id="showDistance" type="text" class="form-control" value= "8000" />
                     <span class="input-group-btn">
                         <button id="showPothole" class="btn btn-primary" type="button">Search</button>
                     </span>
                 </div>
             </div>
             <div class="col-xs-12 col-sm-12">
-
+                <table id="markerResults" class="table table-striped">
+                    <thead>
+                        <td> Marker Id </td>
+                        <td> lat </td>
+                        <td> lon </td>
+                        <td> case_status </td>
+                        <td> report_type </td>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>           
             </div>
         </div>
 
@@ -56,10 +97,26 @@
 
     var bikeSonar = {
         init : function(){
-            $("#reportPothole").click(this.report);
-            $("#showPothole").click(this.show);
+            // Default parameter
+            self = this;
+            self.reportLock = false;
+
+            // Function bind
+            $("#reportPothole").click(self.report);
+            $("#showPothole").click(self.show);
+        },
+        showIconId : function(objectId) {
+            $("#"+objectId).show();
+        },
+        hideIconId : function(objectId) {
+            $("#"+objectId).hide();
         },
         report : function() {
+            if (self.reportLock)
+                return;
+            self.reportLock = true;
+            self.hideIconId("reportSuccess");
+            self.showIconId("reportLoading");
             var lat = $("#reportLat").val();
             var lon = $("#reportLon").val();
             console.log(lat,lon);
@@ -68,30 +125,57 @@
                     lat: lat,
                     lon: lon,
                 }).done(function(data){
+                    setInterval(function(){
+                        self.reportLock = false;
+                        self.hideIconId("reportLoading");
+                        self.showIconId("reportSuccess");
+                    }, 500);
                     console.log(data);
                     if (data.length ==0)
                         return;
                 });
         },
         show : function () {
-            console.log("--show-- "+ time);
+            console.log("  -- Show marker -- ");
             var lat = $("#showLat").val();
             var lon = $("#showLon").val();
+            var distance = $("#showDistance").val();
             var url = "api/show";
             $.getJSON(
                 url, { 
                     lat: lat,
                     lon: lon,
-                    time: time,
+                    //maxresults: 100,
+                    maxdistance: distance,
                     jsontype: "geojson" 
                 }
                 ).done(function(data) {
-                    console.log(data);
                     //myLayer.setGeoJSON(data);
                     if (data.length ==0)
                         return;
+                    self.updateResult(data.results);
                 }
             )
+        },
+        updateResult : function (markers) {
+            console.log(" -- Update query --")
+            var table = $("#markerResults tbody");
+
+            // Remove old table data before append
+            table.children("tr").remove();
+
+            // Update new data
+            console.log(markers);
+            $(markers).each(function(index){
+                $(table).prepend(
+                    $('<tr>').append($('<td>').text(this.id))
+                        .append($('<td>').text(this.lat))
+                        .append($('<td>').text(this.lon))
+                        .append($('<td>').text(this.case_status))
+                        .append($('<td>').text(this.report_type))
+                );
+                //' class="">' +  'tf'this.id + " / " + this.lat + " / " + this.lon +'</li>');
+            });
         }
     };
 

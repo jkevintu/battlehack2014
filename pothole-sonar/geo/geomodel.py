@@ -61,6 +61,7 @@ class GeoModel(db.Model):
       self.location_geocells = [max_res_geocell[:res]
                                 for res in
                                 range(1, geocell.MAX_GEOCELL_RESOLUTION + 1)]
+      # -- UTF-8 issue anchor --
     else:
       self.location_geocells = []
 
