@@ -23,8 +23,12 @@ import math
 from google.appengine.ext import db
 from dbmodel import Pothole
 from dbmodel import PotholeReportLog
-
 import sendgrid
+
+# ------  XLS support -----
+from google.appengine.ext import blobstore
+from google.appengine.ext.webapp import blobstore_handlers
+import xlrd
 
 
 def _merge_dicts(*args):
@@ -319,6 +323,26 @@ class SendGridAPI(AppHandler):
         )
         self.response.out.write(self.json_output(json_result, callback))
 
+class XlsUploader(BaseHandler):
+    def get(self):
+        self.render_template("xls.html", 
+            {'form_url': blobstore.create_upload_url('/xlsuploader')}
+            )
+
+class XlsUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
+    def post(self):
+        blob_xls = self.get_uploads()[0]
+        data = self.read_rows(blob_xls)
+        logging.info(data)
+        self.redirect('/')
+
+    def read_rows(self, inputfile):
+        rows = []
+        wb = xlrd.open_workbook(file_contents=inputfile.open().read())
+        sh = wb.sheet_by_index(0)
+        for rownum in range(sh.nrows):
+            rows.append(sh.row_values(rownum))
+        return rows
 
 app = webapp2.WSGIApplication([
     ('/', IndexHandler),
@@ -326,4 +350,6 @@ app = webapp2.WSGIApplication([
     ('/api/showlog', PotholeShowLogAPI),
     ('/api/report', PotholeReportAPI),
     ('/api/sendgrid', SendGridAPI),
+    ('/xls', XlsUploader),
+    ('/xlsuploader', XlsUploadHandler),
 ], debug=True)
