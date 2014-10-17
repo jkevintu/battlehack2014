@@ -12,6 +12,12 @@ indexes:
 
 - kind: Pothole
   properties:
+  - name: case_status
+  - name: location
+  - name: report_type
+
+- kind: Pothole
+  properties:
   - name: location_geocells
   - name: case_status
     direction: desc

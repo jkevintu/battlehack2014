@@ -256,7 +256,7 @@ class PotholeShowAPI(AppHandler):
         """
         #
         #
-        # disable approximately search
+        # approximately search
         try:
             center = geotypes.Point(float(self.request.get('lat')),float(self.request.get('lon')))
         except ValueError:
@@ -301,6 +301,44 @@ class PotholeShowAPI(AppHandler):
         )
         self.response.out.write(self.json_output(json_result, callback))
 
+class PotholeShowallAPI(AppHandler):
+    def get(self):
+        # Working json code
+        # Show 1000 results from index
+        callback = self.request.get('callback')     #jsonp call back
+        request_time = self.request.get("time")
+        request_index = self.request.get("index")
+        json_type = self.request.get("jsontype")
+
+        db_time = 0
+        db_offset = 0
+        if request_time.isdigit():
+            db_time = int(request_time)
+        if request_index.isdigit():
+            db_offset = int(request_index)
+
+        potholeDB = db.GqlQuery(
+                    "SELECT report_type,case_status,location FROM Pothole "
+                )
+        potholeResults = potholeDB.fetch(1000, db_offset)
+
+        output = []
+        for pothole in potholeResults:
+            potholeId = pothole.key().id()
+            pothole_json = dict(
+                lat      = pothole.location.lat,
+                lon      = pothole.location.lon,
+                case_status = str(pothole.case_status),
+                report_type = str(pothole.report_type),
+                id = str(potholeId)
+            )
+            output.append(pothole_json)
+
+        self.response.out.write(self.json_output(output, callback))
+
+        return
+        
+
 class SendGridAPI(AppHandler):
     def get(self):
         callback = self.request.get('callback')     #jsonp call back
@@ -329,11 +367,21 @@ class XlsUploader(BaseHandler):
             {'form_url': blobstore.create_upload_url('/xlsuploader')}
             )
 
+# --- 
 class XlsUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
     def post(self):
         blob_xls = self.get_uploads()[0]
-        data = self.read_rows(blob_xls)
-        logging.info(data)
+        potholeRequests = self.read_rows(blob_xls)
+        # Get lat lot 
+        #logging.info(potholeRequests[0])
+        latIndex = potholeRequests[0].index('LATITUDE')
+        lonIndex = potholeRequests[0].index('LONGITUDE')
+        report_type = "BOSTON GOV DATA IMPORT"
+        user = "BOSTON GOV"
+        for potholeRequest in potholeRequests[1:]:
+            #logging.info(potholeRequest)
+            self.addpothole(potholeRequest[latIndex], potholeRequest[lonIndex], user, report_type)
+
         self.redirect('/')
 
     def read_rows(self, inputfile):
@@ -344,9 +392,31 @@ class XlsUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
             rows.append(sh.row_values(rownum))
         return rows
 
+    def addpothole(self, lat, lon, user, report_type):
+        nowtime = int(time.time())
+        # Add pothole
+        new_pothole = Pothole()
+        new_pothole._set_location(lat, lon)
+        #new_pothole._set_latitude(lat)
+        #new_pothole._set_longitude(lon)
+        # -- UTF-8 issue anchor --
+        new_pothole.update_location()
+        new_pothole.case_status = "Open"
+        new_pothole.report_type = report_type
+        new_pothole.time = nowtime
+        new_pothole.put()
+
+        # Add potholelog
+        new_pothole_log = PotholeReportLog()
+        new_pothole_log.user = user
+        new_pothole_log.message = "User "+user+" add a pothole @lat:"+str(lat)+" lon:"+str(lon)
+        new_pothole_log.time = nowtime
+        new_pothole_log.put()
+
 app = webapp2.WSGIApplication([
     ('/', IndexHandler),
     ('/api/show', PotholeShowAPI),
+    ('/api/showall', PotholeShowallAPI),
     ('/api/showlog', PotholeShowLogAPI),
     ('/api/report', PotholeReportAPI),
     ('/api/sendgrid', SendGridAPI),
